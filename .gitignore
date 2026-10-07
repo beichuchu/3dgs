@@ -6,3 +6,11 @@ diff_rasterization/diff_rast.egg-info
 diff_rasterization/dist
 tensorboard_3d
 screenshots
+
+# 本地新增：第三方二进制和大型资源
+viewers/bin/
+colmap-x64-windows-cuda3.12.6*/
+data/input/
+data/images/
+# COLMAP database.db 超 200MB，超过 GitHub 100MB 限制
+data/distorted/database.db
