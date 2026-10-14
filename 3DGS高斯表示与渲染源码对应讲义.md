@@ -1,4 +1,4 @@
-# 3DGS 高斯表示与渲染：源码定位式中文讲义
+# 3DGS 高斯表示与渲染：源码定位及中文讲义
 
 > 对应仓库：`D:\02_学习科研\Git clone code\gaussian-splatting`  
 > 对应提交：`ecaf58b4b50fad3a085fac4f2035e972b877b568`  
