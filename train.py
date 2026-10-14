@@ -47,8 +47,8 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
 
     first_iter = 0
     tb_writer = prepare_output_and_logger(dataset)
-    gaussians = GaussianModel(dataset.sh_degree, opt.optimizer_type)
-    scene = Scene(dataset, gaussians)
+    gaussians = GaussianModel(dataset.sh_degree, opt.optimizer_type)#储存所有高斯点的完整属性
+    scene = Scene(dataset, gaussians)#scene 是一个“场景管理对象
     gaussians.training_setup(opt)
     if checkpoint:
         (model_params, first_iter) = torch.load(checkpoint)
@@ -70,7 +70,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
 
     progress_bar = tqdm(range(first_iter, opt.iterations), desc="Training progress")
     first_iter += 1
-    for iteration in range(first_iter, opt.iterations + 1):
+    for iteration in range(first_iter, opt.iterations + 1):#训练轮次
         if network_gui.conn == None:
             network_gui.try_connect()
         while network_gui.conn != None:
@@ -95,11 +95,11 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
             gaussians.oneupSHdegree()
 
         # Pick a random Camera
-        if not viewpoint_stack:
+        if not viewpoint_stack:# 栈中没有相机，则重新复制全部训练相机再取
             viewpoint_stack = scene.getTrainCameras().copy()
             viewpoint_indices = list(range(len(viewpoint_stack)))
-        rand_idx = randint(0, len(viewpoint_indices) - 1)
-        viewpoint_cam = viewpoint_stack.pop(rand_idx)
+        rand_idx = randint(0, len(viewpoint_indices) - 1)#从当前还没使用的相机索引中随机选一个位置。
+        viewpoint_cam = viewpoint_stack.pop(rand_idx)#取出这台相机，并保存到 viewpoint_cam，并弹出
         vind = viewpoint_indices.pop(rand_idx)
 
         # Render

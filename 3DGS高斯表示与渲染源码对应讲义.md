@@ -60,15 +60,21 @@ Set-Location 'D:\02_学习科研\Git clone code\gaussian-splatting'
 
 ```python
 # train.py:50-52
-gaussians = GaussianModel(dataset.sh_degree, opt.optimizer_type)
-scene = Scene(dataset, gaussians)
+gaussians = GaussianModel(dataset.sh_degree, opt.optimizer_type)#储存所有高斯点的完整属性
+scene = Scene(dataset, gaussians)#scene 是一个“场景管理对象
 gaussians.training_setup(opt)
 ```
 
 逐行看：
 
 - `GaussianModel(...)`：先创建一个空的高斯模型容器。
-- `Scene(dataset, gaussians)`：读取 COLMAP 场景，并把点云交给 `gaussians` 初始化。
+- `Scene(dataset, gaussians)`：读取 COLMAP 场景，并把点云交给 `gaussians` 初始化。管理如下
+  1. 数据路径
+  2. 训练相机
+  3. 测试相机
+  4. COLMAP 点云
+  5. 场景范围和尺度
+  6. GaussianModel 中的所有高斯
 - `training_setup(opt)`：为高斯参数建立优化器。这属于下一讲，本讲只知道这些参数稍后可以学习。
 
 训练循环中，每次先选一台相机，再渲染：
@@ -76,16 +82,20 @@ gaussians.training_setup(opt)
 ```python
 # train.py:97-103, 111-112
 rand_idx = randint(0, len(viewpoint_indices) - 1)
-viewpoint_cam = viewpoint_stack.pop(rand_idx)
+viewpoint_cam = viewpoint_stack.pop(rand_idx)#取出一个相机
 
 render_pkg = render(viewpoint_cam, gaussians, pipe, bg, ...)
-image = render_pkg["render"]
+image = render_pkg["render"]#渲染图片
 ```
 
 这里的两个核心输入是：
 
 - `viewpoint_cam`：从哪里看、视野多大、输出图像多大；
 - `gaussians`：场景中所有三维高斯的参数。
+    使用 viewpoint_cam 这台相机
+    观察 gaussians 中的所有高斯
+    按照 pipe 的设置和 bg 背景色
+    生成一张图像
 
 ### 1.4 从哪里来，到哪里去
 
@@ -230,7 +240,7 @@ data/sparse/0/points3D.ply
 
 ```python
 # scene/gaussian_model.py:54-59
-self._xyz = torch.empty(0)
+self._xyz = torch.empty(0)#一个二维数组
 self._features_dc = torch.empty(0)
 self._features_rest = torch.empty(0)
 self._scaling = torch.empty(0)
@@ -249,6 +259,8 @@ self._opacity = torch.empty(0)
 | 旋转四元数原始值 | `_rotation` | 归一化四元数 | `[N,4]` | 是 | `rotations` |
 | 透明度 logit | `_opacity` | `sigmoid(_opacity)` | `[N,1]` | 是 | `opacities` |
 
+3代表(R,G,B)三个颜色通道，球谐系数16代表十六个球谐函数f1~f16
+![alt text](image.png)
 下划线变量通常是优化器直接修改的“原始参数”，getter 给出物理上真正使用的值：
 
 ```python
@@ -418,7 +430,9 @@ G(x)=\exp\left[-\frac12(x-\mu)^T\Sigma^{-1}(x-\mu)\right]
 - `μ`：`get_xyz` 返回的高斯中心；
 - `Σ`：由 `get_scaling` 和旋转构造的协方差；
 - 离中心越远，`G(x)` 越小。
-
+- 权重G(x)决定颜色和透明度，固定一个权重G表示一个椭球层
+![alt text](image-1.png)
+![alt text](image-2.png)
 ### 4.5 一个重要分支
 
 在 `gaussian_renderer/__init__.py:64-68`：
@@ -431,7 +445,7 @@ else:
     rotations = pc.get_rotation
 ```
 
-两条路径表达的是同一个高斯：
+两条路径表达的是同一个高斯(计算协方差矩阵)：
 
 - Python 预计算 `cov3D_precomp`；
 - 或把 `scales + rotations` 交给 Rasterizer 计算。
@@ -441,6 +455,10 @@ else:
 ### 4.6 定位检查
 
 找到 `actual_covariance = L @ L.transpose(1, 2)`，回答：源码直接优化的是完整 `3×3` 协方差矩阵吗？答案是否定的；它优化的是尺度和旋转，再构造协方差。
+
+*权重会随着前面训练的高斯参数更新而变化
+![alt text](image-3.png)
+![alt text](image-4.png)
 
 ---
 
@@ -578,6 +596,10 @@ else:
 | `scales` | `pc.get_scaling` | exp 后三轴尺度 | `[N,3]` |
 | `rotations` | `pc.get_rotation` | 归一化四元数 | `[N,4]` |
 | `cov3D_precomp` | `pc.get_covariance()` | 预计算协方差的 6 个独立量 | `[N,6]` |
+
+\[
+归一化四元数：w^2+x^2+y^2+z^2=1，使用四个数表示旋转
+\]
 
 ### 6.6 第四步：准备颜色
 
